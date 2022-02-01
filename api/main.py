@@ -13,7 +13,7 @@ from jose import JWTError, jwt
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.responses import FileResponse
-
+# from numba import jit, float32
 import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -22,6 +22,9 @@ import time
 from xlwt import *
 import os
 import lxml
+
+
+
 # import xlrd
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -72,12 +75,10 @@ pwd_context= CryptContext(schemes=["bcrypt"],deprecated='auto')
 workbook = Workbook(encoding = 'utf-8')
 table = workbook.add_sheet('data')
 table.write(0, 0, 'S.no')
-table.write(0, 1, 'Names')
-table.write(0, 2, 'Investing')
-table.write(0, 3, 'Mcx')
-table.write(0, 4, 'economictimes')
-table.write(0, 5, 'markets-businessinside')
-table.write(0, 6, 'tradingeconomics')
+table.write(0, 1, 'IDS')
+table.write(0, 2, 'NAMES')
+table.write(0, 3, 'IMAGES')
+
 
 
 
@@ -88,29 +89,19 @@ product = pd.DataFrame(data)
 
 ids = product['asin'].tolist()
 names = product['asin_name'].tolist()
-print(names)
+# print(names)
 headers = {
     'user-agent': 'Mozilla/5.0 (Linux; Android 6.0.1; Moto G (4)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Mobile Safari/537.36'
     }    
     # , columns= ['urls']
 # searchProducts = product['products'].tolist()
 
+# url = "https://www.amazon.in/Nivia-Shining-Star-2022-Football-White/dp/B00363WZY2"
 
-
-
-
-
-url = "https://www.amazon.in/Nivia-Shining-Star-2022-Football-White/dp/B00363WZY2"
-
-# f = requests.get(url, headers = headers,allow_redirects=False)
-# print(f)
-
-# 'html.parser'
-
-def mainFunction(ID,NAME):
-    URL = 'https://www.amazon.in/' + NAME + 'dp/' + ID
+# @jit(nopython = True)
+def scrapyingImages(url,Type):
     driver = webdriver.Chrome(r'C:\chromedriver.exe')
-    driver.get(URL) 
+    driver.get(url) 
             # this is just to ensure that the page is loaded
             
     time.sleep(5)
@@ -119,29 +110,115 @@ def mainFunction(ID,NAME):
     # images = soup.find_all('span',{
     #     'class':'a-button-text'
     # })
+    # ['a-unordered-list' ,'a-nostyle', 'a-button-list','a-vertical','a-horizontal','a-spacing-top-micro','regularAltImageViewLayout']
     soup = BeautifulSoup(html, 'html.parser')
     driver.close()
-    images = soup.find('ul',{'class': 
-    'a-unordered-list a-nostyle a-button-list a-vertical a-spacing-top-micro regularAltImageViewLayout'}).find_all('span',{
-        'class': "a-button-text"
-    })
-    img_list = []
-    img_src = []
-    for i in images:
-        if(i.img != None):
-            img_list.append(i.img)
-    for k in img_list:
-        img_src.append(k['src'])  
-    return img_src    
+    # images = soup.find('ul',{'class': "a-unordered-list a-nostyle a-horizontal list maintain-height"}).find_all('div',{
+    #     'class': "imgTagWrapper"
+    # })
+    if(Type==str):
+        images = soup.find_all('div',{
+            'class': "imgTagWrapper"
+        })
+        img_list = []
+        img_src = []
+        for i in images:
+            print(i.img,'..............')
+        for i in images:
+            if(i.img != None):
+                img_list.append(i.img)
+        for k in img_list:
+            y = k['src'] + ','
+            img_src.append(y)
+        
+        return img_src 
+    else:
+        imgList = []
+        img_src = []
+        images = soup.find('div',{
+            'class': "maintain-height"
+        })
 
-num = 0
-line = 0
+        print(images.img,'jjdadjabaabdbjdbajabsjssjasjssjs')
+        # if(images!= None):
+        # #     imgList.append(i.img) 
+        #     for y in images:
+        #         m = str(y['src']) + ','
+        #         print(m)
+        #         img_src.append(m)
+        val = images.img['src'] + ','
+        return val  
+            
 
+
+
+
+
+# f = requests.get(url, headers = headers,allow_redirects=False)
+# print(f)
+
+# 'html.parser'
+# @jit(nopython = True)
+def mainFunction(ID,Type):
+
+    URL = 'https://www.amazon.in/s?k=' + str(ID)
+    # f = requests.get(URL, headers = headers,allow_redirects=False)
+
+    # soup = BeautifulSoup(f.content, 'lxml')
+
+    # anchorLink = soup.find('a',{'class': 
+    # 'a-link-normal s-no-outline'})
+    # print(anchorLink)
+    driver = webdriver.Chrome(r'C:\chromedriver.exe')
+    driver.get(URL)
+            # this is just to ensure that the page is loaded
+            
+    time.sleep(5)
+    html = driver.page_source
+    soup = BeautifulSoup(html, 'html.parser')
+    driver.close()
+    anchorLink = soup.find('a',{'class': 
+    'a-link-normal s-no-outline'})
+    
+    if(anchorLink!=None):
+        val = 'https://www.amazon.in' + str(anchorLink['href'])
+        resultImages = scrapyingImages(val,Type)
+        return resultImages
+    else:
+        return 'NotFound'    
+
+    # soup = BeautifulSoup(f.content, 'lxml')
+    # images = soup.find_all('span',{
+    #     'class':'a-button-text'
+    # })
+    # soup = BeautifulSoup(html, 'html.parser')
+    
+
+    
+
+row = 1
+
+resultImagesList = []
 for i in range(len(ids)):
     ID = ids[i]
-    NAME = names[i]
-    value = mainFunction(ID,NAME)
+    val = type(ID)
+    print(ID,i)
+    value = mainFunction(ID,val)
     print(value)
+    resultImagesList.append(value)
+  
+for my in range(len(resultImagesList)):
+    Id = str(ids[my])
+    v1 = Id.replace(" ", "")
+    v2 = names[my]
+    v3 = resultImagesList[my]
+    table.write(row, 0, row)
+    table.write(row, 1, v1)
+    table.write(row, 2, v2)  
+    table.write(row, 3, v3)
+
+    row+=1 
+workbook.save('scraper-data-LMWK01_CT_NHB.xls')   
 
 
 
